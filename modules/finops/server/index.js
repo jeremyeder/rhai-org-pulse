@@ -3,10 +3,27 @@ const { buildReport } = require('./report');
 
 // In-memory session accumulator — merges with stored decisions so demo mode
 // shows new triage entries even though demo storage ignores writes.
+// Bounded ring buffer: discard oldest beyond 500 to prevent unbounded growth.
+const SESSION_DECISIONS_MAX = 500;
 const sessionDecisions = [];
 
 module.exports = function registerRoutes(router, context) {
-  const { storage, requireAuth } = context;
+  const { storage, requireAuth, requireAdmin } = context;
+
+  context.registerScopes([
+    {
+      key: 'finops:triage',
+      label: 'FinOps Triage (Write)',
+      description: 'Record triage decisions on cost-optimization findings',
+      category: 'FinOps'
+    },
+    {
+      key: 'finops:read',
+      label: 'FinOps (Read)',
+      description: 'Read FinOps findings, reports, and audit log',
+      category: 'FinOps'
+    }
+  ]);
 
   /**
    * @openapi
@@ -157,8 +174,10 @@ module.exports = function registerRoutes(router, context) {
       if (corrected_provider) decision.corrected_provider = corrected_provider;
       if (corrected_thinking) decision.corrected_thinking = corrected_thinking;
 
-      // Always accumulate in-memory so demo mode shows the entry even if storage ignores the write
+      // Always accumulate in-memory so demo mode shows the entry even if storage ignores the write.
+      // Bounded: discard oldest once we exceed SESSION_DECISIONS_MAX.
       sessionDecisions.unshift(decision);
+      if (sessionDecisions.length > SESSION_DECISIONS_MAX) sessionDecisions.pop();
 
       const decisions = await storage.readFromStorage('finops/triage-decisions.json') || [];
       decisions.push(decision);
@@ -190,7 +209,7 @@ module.exports = function registerRoutes(router, context) {
    *       200:
    *         description: Sync result
    */
-  router.post('/sync', requireAuth, async function(req, res) {
+  router.post('/sync', requireAdmin, async function(req, res) {
     try {
       const result = await sync(storage, context.secrets);
       res.json(result);
