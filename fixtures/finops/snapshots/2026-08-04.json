@@ -1,0 +1,20 @@
+{
+  "date": "2026-08-04",
+  "findings": [
+    { "id": "e5d6c7b8", "rank": 1, "opportunity_type": "batch-eligible", "source": "mlflow", "prompt_pattern": "classify support ticket severity", "current_model": "claude-sonnet-5", "suggested_model": "claude-haiku-4-5", "estimated_weekly_savings_usd": 8.5, "effort_level": "medium", "run_count": 140 },
+    { "id": "e3f4a5b6", "rank": 2, "opportunity_type": "batch-eligible", "source": "langfuse", "prompt_pattern": "score PR review comments for relevance", "current_model": "claude-opus-5", "suggested_model": "claude-haiku-4-5", "estimated_weekly_savings_usd": 7.2, "effort_level": "high", "run_count": 110 },
+    { "id": "p0q1r2s3", "rank": 3, "opportunity_type": "deterministic", "source": "mlflow", "prompt_pattern": "convert structured log to JSON", "current_model": "claude-sonnet-5", "suggested_model": null, "estimated_weekly_savings_usd": 9.8, "effort_level": "low", "run_count": 195 },
+    { "id": "g2h3i4j5", "rank": 4, "opportunity_type": "model-mismatch", "source": "langfuse", "prompt_pattern": "summarize test run failures for email", "current_model": "claude-opus-5", "suggested_model": "claude-sonnet-5", "estimated_weekly_savings_usd": 6.1, "effort_level": "low", "run_count": 75 },
+    { "id": "k6l7m8n9", "rank": 5, "opportunity_type": "provider-arbitrage", "source": "praxis", "prompt_pattern": "check grammar in user-facing strings", "current_model": "gpt-4o", "suggested_model": "claude-haiku-4-5", "estimated_weekly_savings_usd": 5.3, "effort_level": "low", "run_count": 420 },
+    { "id": "bb2cc3d4", "rank": 6, "opportunity_type": "provider-arbitrage", "source": "litellm", "prompt_pattern": "extract action items from meeting transcript", "current_model": "gpt-4o", "suggested_model": "claude-sonnet-5", "estimated_weekly_savings_usd": 3.8, "effort_level": "medium", "run_count": 28 },
+    { "id": "a9b0c1d2", "rank": 7, "opportunity_type": "cache-miss", "source": "mlflow", "prompt_pattern": "summarize Jira epic for standup", "current_model": "claude-sonnet-5", "suggested_model": "claude-sonnet-5", "estimated_weekly_savings_usd": 2.15, "effort_level": "low", "run_count": 32 },
+    { "id": "c7d8e9f0", "rank": 8, "opportunity_type": "model-mismatch", "source": "mlflow", "prompt_pattern": "validate JSON schema against spec", "current_model": "claude-sonnet-5", "suggested_model": "claude-haiku-4-5", "estimated_weekly_savings_usd": 1.8, "effort_level": "low", "run_count": 235 },
+    { "id": "f0e1d2c3", "rank": 9, "opportunity_type": "cache-miss", "source": "praxis", "prompt_pattern": "explain compiler error to developer", "current_model": "claude-opus-5", "suggested_model": "claude-sonnet-5", "estimated_weekly_savings_usd": 3.1, "effort_level": "medium", "run_count": 55 }
+  ],
+  "billing": [
+    { "source": "gcp-billing", "model": "claude-opus-5",   "cost_usd": 28.60, "date_range_start": "2026-07-28", "date_range_end": "2026-08-04", "request_count": 890 },
+    { "source": "gcp-billing", "model": "claude-sonnet-5", "cost_usd": 22.30, "date_range_start": "2026-07-28", "date_range_end": "2026-08-04", "request_count": 2480 },
+    { "source": "gcp-billing", "model": "claude-haiku-4-5","cost_usd":  8.60, "date_range_start": "2026-07-28", "date_range_end": "2026-08-04", "request_count": 12900 },
+    { "source": "gcp-billing", "model": "gpt-4o",          "cost_usd":  5.70, "date_range_start": "2026-07-28", "date_range_end": "2026-08-04", "request_count": 440 }
+  ]
+}

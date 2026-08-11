@@ -1,0 +1,42 @@
+{
+  "name": "FinOps",
+  "slug": "finops",
+  "description": "AI model cost reporting and routing optimization triage",
+  "icon": "dollar-sign",
+  "order": 20,
+  "defaultEnabled": true,
+  "client": {
+    "entry": "./client/index.js",
+    "navItems": [
+      { "id": "overview",  "label": "Overview",  "icon": "LayoutDashboard", "default": true },
+      { "id": "trends",    "label": "Trends",    "icon": "TrendingUp" },
+      { "id": "triage",    "label": "Triage",    "icon": "ClipboardList" },
+      { "id": "audit",     "label": "Audit",     "icon": "History" }
+    ],
+    "settingsComponent": "./client/components/FinOpsSettings.vue"
+  },
+  "server": {
+    "entry": "./server/index.js"
+  },
+  "secrets": {
+    "module": [
+      {
+        "key": "FINOPS_GITHUB_TOKEN",
+        "description": "GitHub PAT with repo (read) scope for git clone/pull of finops recommendations repo",
+        "required": true
+      },
+      {
+        "key": "FINOPS_GITHUB_REPO",
+        "description": "owner/repo of finops recommendations store (e.g. jeremyeder/finops-recommendations)",
+        "required": true
+      }
+    ]
+  },
+  "export": {
+    "files": [
+      { "path": "finops/latest.json",           "notes": "Latest findings snapshot" },
+      { "path": "finops/triage-decisions.json", "notes": "Audit log of triage decisions" },
+      { "path": "finops/suppression.json",      "notes": "Suppressed finding IDs" }
+    ]
+  }
+}

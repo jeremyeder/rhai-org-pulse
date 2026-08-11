@@ -1,0 +1,54 @@
+[
+  {
+    "id": "f1a2b3c4",
+    "action": "approve",
+    "rationale": "Sonnet is sufficient for release notes. Verified with 50-sample A/B test.",
+    "actor": "admin@redhat.com",
+    "timestamp": "2026-08-08T14:30:00Z",
+    "finding": {
+      "prompt_pattern": "generate release notes for sprint",
+      "current_model": "claude-opus-5",
+      "suggested_model": "claude-sonnet-5",
+      "estimated_weekly_savings_usd": 4.20
+    }
+  },
+  {
+    "id": "e5d6c7b8",
+    "action": "approve",
+    "rationale": "Haiku classification accuracy confirmed at 96.2%. Switching to batch API.",
+    "actor": "admin@redhat.com",
+    "timestamp": "2026-08-09T10:15:00Z",
+    "finding": {
+      "prompt_pattern": "classify support ticket severity",
+      "current_model": "claude-sonnet-5",
+      "suggested_model": "claude-haiku-4-5",
+      "estimated_weekly_savings_usd": 8.50
+    }
+  },
+  {
+    "id": "deadbeef",
+    "action": "deny",
+    "rationale": "Translation quality for Japanese technical terms drops below acceptable threshold with Haiku.",
+    "actor": "admin@redhat.com",
+    "timestamp": "2026-08-09T11:00:00Z",
+    "finding": {
+      "prompt_pattern": "translate error messages to Japanese",
+      "current_model": "claude-sonnet-5",
+      "suggested_model": "claude-haiku-4-5",
+      "estimated_weekly_savings_usd": 1.90
+    }
+  },
+  {
+    "id": "b3c4d5e6",
+    "action": "defer",
+    "rationale": "Need to validate Anthropic extraction quality against OpenAI baseline before switching.",
+    "actor": "engineer@redhat.com",
+    "timestamp": "2026-08-10T09:45:00Z",
+    "finding": {
+      "prompt_pattern": "extract action items from meeting transcript",
+      "current_model": "gpt-4o",
+      "suggested_model": "claude-sonnet-5",
+      "estimated_weekly_savings_usd": 3.80
+    }
+  }
+]
