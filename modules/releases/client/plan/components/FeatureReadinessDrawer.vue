@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import HygieneViolations from '@shared/client/components/HygieneViolations.vue'
 import {
   worstFailedSeverity,
   severityBadgeClass,
@@ -22,6 +21,36 @@ const open = computed(() => props.feature !== null)
 const isHealthPipeline = computed(() => props.feature?.dataSource === 'health-pipeline')
 
 const RUBRIC_DIMS = ['feasibility', 'testability', 'scope', 'architecture']
+
+const hasAiReviewMeta = computed(function() {
+  var f = props.feature
+  if (!f) return false
+  return f.recommendation != null || f.humanReviewStatus != null
+})
+
+const hasRubricScores = computed(function() {
+  var s = props.feature && props.feature.scores
+  if (!s) return false
+  for (var i = 0; i < RUBRIC_DIMS.length; i++) {
+    if (s[RUBRIC_DIMS[i]] != null) return true
+  }
+  return false
+})
+
+const fixVersionDisplay = computed(function() {
+  var f = props.feature
+  if (!f) return null
+  if (f.fixVersion) return f.fixVersion
+  if (f.fixVersions && f.fixVersions.length) return f.fixVersions.join(', ')
+  return null
+})
+
+const dataSourceLabel = computed(function() {
+  var src = props.feature && props.feature.dataSource
+  if (src === 'health-pipeline') return 'Health Pipeline'
+  if (src === 'pm-hub' || src === 'jira') return 'Jira'
+  return 'Strategy Creator'
+})
 
 function reviewStatusClass(status) {
   switch (status) {
@@ -203,10 +232,6 @@ const failedFpdorActions = computed(() => {
     .map(item => ({ name: item.name, action: FPDOR_TO_HYGIENE[item.name], detail: item.detail }))
 })
 
-const violationsList = computed(() => props.feature?.violations || [])
-const violationCount = computed(() => violationsList.value.length)
-
-const hygieneExpanded = ref(true)
 const breakdownExpanded = ref(false)
 
 const scoreBreakdown = computed(() => {
@@ -306,12 +331,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               </span>
             </template>
 
-            <!-- Strat-creator badges -->
-            <template v-else>
+            <!-- Strat-creator badges — only when AI review meta exists -->
+            <template v-else-if="hasAiReviewMeta">
               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold" :class="reviewStatusClass(feature.humanReviewStatus)">
                 {{ reviewStatusLabel(feature.humanReviewStatus) }}
               </span>
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold" :class="recommendationClass(feature.recommendation)">
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold"
+                :class="recommendationClass(feature.recommendation)"
+                title="AI First Recommends"
+              >
                 {{ recommendationLabel(feature.recommendation) }}
               </span>
             </template>
@@ -329,7 +358,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <div class="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
 
           <!-- Priority Score -->
-          <section class="px-4 py-4">
+          <section v-if="feature.effectivePriorityScore != null" class="px-4 py-4">
             <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Priority Score</p>
             <div class="flex items-center gap-3">
               <span
@@ -460,7 +489,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               </div>
             </div>
 
-            <!-- Readiness-to-Hygiene Action Bridge -->
+            <!-- Actions for failed FPDoR items -->
             <div v-if="failedFpdorActions.length > 0" class="mt-4 p-3 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
               <p class="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-2">Actions to resolve</p>
               <ul class="space-y-1.5">
@@ -472,43 +501,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             </div>
           </section>
 
-          <!-- Hygiene Violations -->
-          <section class="px-4 py-4">
-            <button
-              type="button"
-              class="w-full flex items-center justify-between text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              @click="hygieneExpanded = !hygieneExpanded"
-            >
-              <span class="flex items-center gap-2">
-                Hygiene
-                <span
-                  v-if="violationCount > 0"
-                  class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                >{{ violationCount }} {{ violationCount === 1 ? 'warning' : 'warnings' }}</span>
-                <span
-                  v-else-if="feature && feature.hygieneStatus === 'unknown'"
-                  class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                >Unknown</span>
-                <span
-                  v-else
-                  class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                >All clear</span>
-              </span>
-              <svg
-                class="w-3.5 h-3.5 transition-transform"
-                :class="hygieneExpanded ? 'rotate-180' : ''"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <div v-if="hygieneExpanded">
-              <HygieneViolations :violations="violationsList" :feature-key="feature?.key" :jira-base-url="jiraBaseUrl" />
-            </div>
-          </section>
-
-          <!-- Rubric (strat-creator features only; display/priority — does not gate FPDoR) -->
-          <section v-if="!isHealthPipeline" class="px-4 py-4">
+          <!-- Rubric (strat-creator features with scores; display/priority — does not gate FPDoR) -->
+          <section v-if="hasRubricScores" class="px-4 py-4">
             <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">
               Rubric — {{ rubricTotal }} / 8
             </p>
@@ -611,7 +605,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               </dd>
 
               <dt class="text-gray-400 dark:text-gray-500">Fix Version</dt>
-              <dd class="font-mono text-gray-700 dark:text-gray-300">{{ feature.fixVersion || '—' }}</dd>
+              <dd class="font-mono text-gray-700 dark:text-gray-300">{{ fixVersionDisplay || '—' }}</dd>
 
               <dt class="text-gray-400 dark:text-gray-500 self-start">Components</dt>
               <dd>
@@ -653,7 +647,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <dd class="text-gray-700 dark:text-gray-300">{{ feature.status || '—' }}</dd>
 
               <dt class="text-gray-400 dark:text-gray-500">Data Source</dt>
-              <dd class="text-gray-700 dark:text-gray-300">{{ isHealthPipeline ? 'Health Pipeline' : 'Strategy Creator' }}</dd>
+              <dd class="text-gray-700 dark:text-gray-300">{{ dataSourceLabel }}</dd>
 
             </dl>
           </section>
