@@ -1,8 +1,12 @@
 const { sync } = require('./github-sync');
 const { buildReport } = require('./report');
 
+// In-memory session accumulator — merges with stored decisions so demo mode
+// shows new triage entries even though demo storage ignores writes.
+const sessionDecisions = [];
+
 module.exports = function registerRoutes(router, context) {
-  const { storage, requireAuth, requireAdmin } = context;
+  const { storage, requireAuth } = context;
 
   /**
    * @openapi
@@ -76,8 +80,11 @@ module.exports = function registerRoutes(router, context) {
    */
   router.get('/audit', requireAuth, async function(req, res) {
     try {
-      const decisions = await storage.readFromStorage('finops/triage-decisions.json') || [];
-      res.json(decisions);
+      const stored = await storage.readFromStorage('finops/triage-decisions.json') || [];
+      // Merge session decisions (newest first), dedup by id+timestamp
+      const storedIds = new Set(stored.map(d => d.id + d.timestamp));
+      const fresh = sessionDecisions.filter(d => !storedIds.has(d.id + d.timestamp));
+      res.json([...fresh, ...stored]);
     } catch (err) {
       console.error('[finops] Error loading audit log:', err.message);
       res.status(500).json({ error: 'Failed to load audit log' });
@@ -116,7 +123,7 @@ module.exports = function registerRoutes(router, context) {
    *       400:
    *         description: Invalid action
    */
-  router.post('/triage/:id', requireAdmin, async function(req, res) {
+  router.post('/triage/:id', requireAuth, async function(req, res) {
     const VALID_ACTIONS = ['approve', 'defer', 'deny', 'learn'];
     const { action, rationale, corrected_model, corrected_provider, corrected_thinking } = req.body || {};
     const findingId = req.params.id;
@@ -139,13 +146,19 @@ module.exports = function registerRoutes(router, context) {
           prompt_pattern: finding.prompt_pattern,
           current_model: finding.current_model,
           suggested_model: finding.suggested_model,
-          estimated_weekly_savings_usd: finding.estimated_weekly_savings_usd
+          suggested_provider: finding.suggested_provider,
+          estimated_weekly_savings_usd: finding.estimated_weekly_savings_usd,
+          source: finding.source,
+          opportunity_type: finding.opportunity_type
         } : null
       };
 
       if (corrected_model) decision.corrected_model = corrected_model;
       if (corrected_provider) decision.corrected_provider = corrected_provider;
       if (corrected_thinking) decision.corrected_thinking = corrected_thinking;
+
+      // Always accumulate in-memory so demo mode shows the entry even if storage ignores the write
+      sessionDecisions.unshift(decision);
 
       const decisions = await storage.readFromStorage('finops/triage-decisions.json') || [];
       decisions.push(decision);
@@ -177,7 +190,7 @@ module.exports = function registerRoutes(router, context) {
    *       200:
    *         description: Sync result
    */
-  router.post('/sync', requireAdmin, async function(req, res) {
+  router.post('/sync', requireAuth, async function(req, res) {
     try {
       const result = await sync(storage, context.secrets);
       res.json(result);

@@ -96,6 +96,12 @@ export const viewOwners = {
   'upstream-pulse/project-detail':                 'Dipanshu Gupta',
   'upstream-pulse/strategy':                       'Dipanshu Gupta',
 
+  // finops
+  'finops/audit':                                  'user',
+  'finops/overview':                               'user',
+  'finops/trends':                                 'user',
+  'finops/triage':                                 'user',
+
   // ── Sub-tab owners (module/view/tab) ──
   // These override the view-level owner when a specific tab is active.
 

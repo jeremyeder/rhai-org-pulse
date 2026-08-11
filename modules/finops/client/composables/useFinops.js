@@ -50,11 +50,16 @@ async function loadAudit() {
 }
 
 async function triageAction(id, action, payload = {}) {
-  return apiRequest(`/modules/finops/triage/${encodeURIComponent(id)}`, {
+  const result = await apiRequest(`/modules/finops/triage/${encodeURIComponent(id)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, ...payload })
   })
+  // Push the new decision into the shared audit ref so AuditView updates immediately
+  if (result && result.decision) {
+    audit.value = [result.decision, ...audit.value]
+  }
+  return result
 }
 
 export function useFindings() {

@@ -1,12 +1,21 @@
 const childProcess = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
-const CLONE_DIR = '/tmp/finops-repo';
+// Stable cache dir — reused across syncs to avoid re-cloning every time.
+// We verify the remote origin before every pull to prevent path-hijack.
+const CLONE_DIR = path.join(os.tmpdir(), 'finops-repo');
 
-function run(cmd, args) {
+// Run git with the token injected via http.extraheader (never embedded in the URL
+// or stored in .git/config). GIT_TERMINAL_PROMPT=0 prevents interactive prompts.
+function run(cmd, args, env) {
   return new Promise((resolve, reject) => {
-    childProcess.execFile(cmd, args, { timeout: 60000 }, (err, stdout, stderr) => {
+    const opts = {
+      timeout: 60000,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0', ...(env || {}) }
+    };
+    childProcess.execFile(cmd, args, opts, (err, stdout, stderr) => {
       if (err) {
         reject(new Error(`${cmd} failed: ${stderr || err.message}`));
         return;
@@ -14,6 +23,11 @@ function run(cmd, args) {
       resolve(stdout.trim());
     });
   });
+}
+
+function authArgs(token) {
+  // Inject token via http.extraheader so it never lands in .git/config or the URL
+  return ['-c', `http.extraheader=Authorization: Bearer ${token}`];
 }
 
 async function sync(storage, secrets) {
@@ -24,16 +38,28 @@ async function sync(storage, secrets) {
     return { synced: false, reason: 'FINOPS_GITHUB_TOKEN and FINOPS_GITHUB_REPO are required' };
   }
 
-  try {
-    const repoUrl = `https://${token}@github.com/${repo}.git`;
+  const bareUrl = `https://github.com/${repo}.git`;
 
-    if (fs.existsSync(path.join(CLONE_DIR, '.git'))) {
-      await run('git', ['-C', CLONE_DIR, 'pull', '--ff-only']);
-    } else {
-      if (fs.existsSync(CLONE_DIR)) {
+  try {
+    const dotGit = path.join(CLONE_DIR, '.git');
+    if (fs.existsSync(dotGit)) {
+      // Verify origin URL matches configured repo before pulling (path-hijack guard)
+      const originUrl = await run('git', ['-C', CLONE_DIR, 'remote', 'get-url', 'origin']).catch(() => '');
+      if (originUrl !== bareUrl) {
+        // Origin mismatch — wipe and re-clone with correct repo
         fs.rmSync(CLONE_DIR, { recursive: true });
+      } else {
+        // Update credentials for this pull (stale-credential guard)
+        await run('git', ['-C', CLONE_DIR, 'remote', 'set-url', 'origin', bareUrl]);
+        await run('git', [...authArgs(token), '-C', CLONE_DIR, 'pull', '--ff-only']);
       }
-      await run('git', ['clone', '--depth', '1', repoUrl, CLONE_DIR]);
+    }
+
+    if (!fs.existsSync(dotGit)) {
+      if (fs.existsSync(CLONE_DIR)) fs.rmSync(CLONE_DIR, { recursive: true });
+      await run('git', [...authArgs(token), 'clone', '--depth', '1', bareUrl, CLONE_DIR]);
+      // Strip any credential residue from config
+      await run('git', ['-C', CLONE_DIR, 'remote', 'set-url', 'origin', bareUrl]).catch(() => {});
     }
 
     const snapshotsDir = path.join(CLONE_DIR, 'snapshots');
@@ -51,7 +77,6 @@ async function sync(storage, secrets) {
 
     const latestDate = dateDirs[dateDirs.length - 1];
     const latestDir = path.join(snapshotsDir, latestDate);
-
     const rankedPath = path.join(latestDir, 'ranked.json');
     const billingPath = path.join(latestDir, 'billing.json');
 
@@ -79,7 +104,7 @@ async function sync(storage, secrets) {
     return { synced: true, date: latestDate, findingCount: ranked.length };
   } catch (err) {
     const safeReason = token
-      ? err.message.replace(new RegExp(token, 'g'), '<redacted>')
+      ? err.message.replace(new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '<redacted>')
       : err.message;
     return { synced: false, reason: safeReason };
   }
